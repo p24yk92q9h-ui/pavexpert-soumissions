@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pavexpert — Générateur de soumissions</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --pav-black: #111418;
+    --pav-dark: #1c2026;
+    --pav-grey: #8a8f96;
+    --pav-silver: #c9ccd1;
+    --pav-light: #f4f5f7;
+    --pav-accent: #d62828;
+    --pav-white: #ffffff;
+    --pav-border: #e2e4e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: var(--pav-light);
+    color: var(--pav-black);
+  }
+  .topbar {
+    background: var(--pav-black);
+    color: var(--pav-white);
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .topbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .topbar .logo-mini-img {
+    height: 46px;
+    width: auto;
+    object-fit: contain;
+  }
+  .topbar h1 {
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  .topbar h1 span { color: var(--pav-silver); font-weight: 400; }
+  .btn {
+    border: 0;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all .15s ease;
+  }
+  .btn-primary {
+    background: var(--pav-accent);
+    color: var(--pav-white);
+  }
+  .btn-primary:hover { background: #b91c1c; }
+  .btn-secondary {
+    background: var(--pav-dark);
+    color: var(--pav-white);
+    border: 1px solid #3a3f47;
+  }
+  .btn-secondary:hover { background: #2a2f37; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--pav-grey);
+    border: 1px dashed var(--pav-grey);
+  }
+  .btn-ghost:hover { color: var(--pav-black); border-color: var(--pav-black); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) 1fr;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* FORM PANEL */
+  .panel {
+    background: var(--pav-white);
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(20, 23, 27, 0.06);
+    padding: 22px;
+  }
+  .panel h2 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--pav-black);
+    border-bottom: 2px solid var(--pav-black);
+    padding-bottom: 8px;
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pav-grey);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--pav-border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--pav-white);
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--pav-black);
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* SERVICE ITEMS */
+  .service-item {
+    background: var(--pav-light);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--pav-border);
+  }
+  .service-item .row3 {
+    display: grid;
+    grid-template-columns: 1fr 70px 90px;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .service-item .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .service-item .top-row span {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pav-grey);
+  }
+  .service-item .remove-btn {
+    background: transparent;
+    border: 0;
+    color: var(--pav-accent);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 6px;
+  }
+  .service-item .remove-btn:hover { text-decoration: underline; }
+
+  /* PREVIEW */
+  .preview-wrapper {
+    overflow: auto;
+  }
+  .doc {
+    width: 816px; /* 8.5in @ 96dpi */
+    min-height: 1056px; /* 11in @ 96dpi */
+    background: var(--pav-white);
+    margin: 0 auto;
+    padding: 50px 56px;
+    box-shadow: 0 4px 20px rgba(20, 23, 27, 0.1);
+    color: var(--pav-black);
+    font-size: 13px;
+    line-height: 1.5;
+    position: relative;
+  }
+  .doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 4px solid var(--pav-black);
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+  }
+  .doc-logo-wrap {
+    display: inline-block;
+  }
+  .doc-logo-img {
+    display: block;
+    max-height: 90px;
+    width: auto;
+    object-fit: contain;
+  }
+  .doc-meta {
+    text-align: right;
+  }
+  .doc-meta h2 {
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--pav-black);
+    font-weight: 800;
+  }
+  .doc-meta .meta-row {
+    font-size: 12px;
+    color: var(--pav-grey);
+    margin-top: 6px;
+  }
+  .doc-meta .meta-row strong { color: var(--pav-black); }
+
+  .doc-section { margin-bottom: 22px; }
+  .doc-section h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--pav-grey);
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .info-grid .block {
+    background: var(--pav-light);
+    border-left: 3px solid var(--pav-black);
+    padding: 12px 14px;
+    border-radius: 0 6px 6px 0;
+  }
+  .info-grid .block .name {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--pav-black);
+    margin-bottom: 4px;
+  }
+  .info-grid .block .detail {
+    font-size: 12px;
+    color: #444;
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+  table.items thead th {
+    background: var(--pav-black);
+    color: var(--pav-white);
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  table.items thead th.num { text-align: right; width: 110px; }
+  table.items thead th.qty { text-align: center; width: 100px; }
+  table.items tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--pav-border);
+    font-size: 12px;
+    vertical-align: top;
+  }
+  table.items tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.items tbody td.qty { text-align: center; }
+  table.items tbody tr:nth-child(even) td { background: #fafbfc; }
+  .item-title { font-weight: 700; color: var(--pav-black); }
+  .item-desc { color: #555; font-size: 11px; margin-top: 2px; }
+
+  .totals {
+    margin-top: 14px;
+    margin-left: auto;
+    width: 280px;
+  }
+  .totals .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .totals .row.total {
+    border-top: 2px solid var(--pav-black);
+    margin-top: 6px;
+    padding-top: 10px;
+    font-weight: 800;
+    font-size: 17px;
+    background: var(--pav-black);
+    color: var(--pav-white);
+    padding: 10px 12px;
+    border-radius: 4px;
+  }
+
+  .notes-block {
+    background: var(--pav-light);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-top: 18px;
+    font-size: 12px;
+    color: #444;
+    white-space: pre-line;
+    border-left: 3px solid var(--pav-grey);
+  }
+
+  /* TAX TOGGLE */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--pav-light);
+    border: 1px solid var(--pav-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .toggle-row .toggle-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pav-black);
+  }
+  .toggle-row .toggle-label small {
+    display: block;
+    font-weight: 400;
+    color: var(--pav-grey);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #c7cbd1;
+    transition: .2s;
+    border-radius: 26px;
+  }
+  .slider:before {
+    position: absolute; content: "";
+    height: 20px; width: 20px;
+    left: 3px; bottom: 3px;
+    background-color: white;
+    transition: .2s;
+    border-radius: 50%;
+  }
+  input:checked + .slider { background-color: var(--pav-accent); }
+  input:checked + .slider:before { transform: translateX(22px); }
+
+  .tax-status-banner {
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    color: #78350f;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    margin-top: 8px;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .doc-footer {
+    position: absolute;
+    bottom: 30px;
+    left: 56px;
+    right: 56px;
+    border-top: 2px solid var(--pav-black);
+    padding-top: 10px;
+    font-size: 10.5px;
+    color: var(--pav-grey);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .doc-footer .company-info { line-height: 1.5; }
+  .doc-footer .company-info strong { color: var(--pav-black); }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .hint {
+    font-size: 11px;
+    color: var(--pav-grey);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img id="logo-mini-img" class="logo-mini-img" alt="Pavexpert" crossorigin="anonymous"
+         src="https://images.weserv.nl/?url=pavexpert.ca/wp-content/uploads/2025/06/pave_expert_logo-1-scaled.jpeg&w=200"/>
+    <h1>PAVEXPERT <span>· Générateur de soumissions</span></h1>
+  </div>
+  <div>
+    <button class="btn btn-secondary" onclick="resetForm()">Réinitialiser</button>
+    <button class="btn btn-primary" onclick="downloadPDF()">Télécharger PDF</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ========== FORM PANEL ========== -->
+  <div>
+    <div class="panel">
+      <h2>Informations de la soumission</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Numéro de soumission</label>
+          <input type="text" id="quoteNumber" value="SOUM-2026-001" oninput="render()"/>
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="quoteDate" oninput="render()"/>
+        </div>
+      </div>
+      <div class="field">
+        <label>Valide jusqu'au</label>
+        <input type="date" id="quoteValid" oninput="render()"/>
+      </div>
+      <div class="field">
+        <label>Nom du vendeur</label>
+        <input type="text" id="seller" placeholder="ex. Jean Tremblay" oninput="render()"/>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h2>Client</h2>
+      <div class="field">
+        <label>Nom du client</label>
+        <input type="text" id="clientName" placeholder="Nom complet ou nom d'entreprise" oninput="render()"/>
+      </div>
+      <div class="field">
+        <label>Adresse du projet</label>
+        <textarea id="clientAddress" rows="2" placeholder="Adresse civique, ville, code postal" oninput="render()"></textarea>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Téléphone</label>
+          <input type="text" id="clientPhone" placeholder="(450) 000-0000" oninput="render()"/>
+        </div>
+        <div class="field">
+          <label>Courriel</label>
+          <input type="email" id="clientEmail" placeholder="client@exemple.com" oninput="render()"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h2>Services</h2>
+      <div id="services-list"></div>
+      <button class="btn btn-ghost" onclick="addService()" style="width:100%; margin-top:6px;">+ Ajouter un service</button>
+      <div class="hint">
+        Inscrivez le type de service, la superficie en pieds carrés et le prix total négocié pour chaque service.
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h2>Taxes & Notes</h2>
+
+      <div class="toggle-row">
+        <div class="toggle-label">
+          Inclure les taxes (TPS &amp; TVQ)
+          <small>Désactiver pour les paiements comptant sans taxes</small>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="includeTaxes" checked onchange="render()"/>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="row2" id="taxes-fields">
+        <div class="field">
+          <label>TPS (%)</label>
+          <input type="number" id="tps" value="5" step="0.01" oninput="render()"/>
+        </div>
+        <div class="field">
+          <label>TVQ (%)</label>
+          <input type="number" id="tvq" value="9.975" step="0.01" oninput="render()"/>
+        </div>
+      </div>
+      <div class="field">
+        <label>Notes / Conditions</label>
+        <textarea id="notes" rows="4" oninput="render()">- Cette soumission est valide pour une période de 30 jours.
+- Les travaux seront exécutés selon les standards de l'industrie.
+- Un dépôt de 25 % est exigé à la signature du contrat.
+- Délai d'exécution sujet aux conditions météorologiques.</textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PREVIEW PANEL ========== -->
+  <div class="preview-wrapper">
+    <div id="doc" class="doc">
+      <!-- HEADER -->
+      <div class="doc-header">
+        <div class="doc-logo-wrap">
+          <img id="doc-logo-img" class="doc-logo-img" alt="Pavexpert" crossorigin="anonymous"
+               src="https://images.weserv.nl/?url=pavexpert.ca/wp-content/uploads/2025/06/pave_expert_logo-1-scaled.jpeg&w=600"/>
+        </div>
+        <div class="doc-meta">
+          <h2>SOUMISSION</h2>
+          <div class="meta-row"><strong>N° :</strong> <span id="p_quoteNumber">SOUM-2026-001</span></div>
+          <div class="meta-row"><strong>Date :</strong> <span id="p_quoteDate">—</span></div>
+          <div class="meta-row"><strong>Valide jusqu'au :</strong> <span id="p_quoteValid">—</span></div>
+        </div>
+      </div>
+
+      <!-- INFO -->
+      <div class="info-grid doc-section">
+        <div>
+          <h3>Soumission préparée pour</h3>
+          <div class="block">
+            <div class="name" id="p_clientName">—</div>
+            <div class="detail" id="p_clientDetails">—</div>
+          </div>
+        </div>
+        <div>
+          <h3>Soumission préparée par</h3>
+          <div class="block">
+            <div class="name" id="p_seller">—</div>
+            <div class="detail">Pavexpert · Asphalte &amp; Entretien<br/>450-419-9939<br/>info@pavexpert.ca</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="doc-section">
+        <h3>Détail des services</h3>
+        <table class="items">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th class="qty">Pi²</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="p_items"></tbody>
+        </table>
+
+        <div class="totals">
+          <div class="row"><span>Sous-total</span><span id="p_subtotal">0,00 $</span></div>
+          <div class="row tax-row"><span>TPS (<span id="p_tps_rate">5</span>%)</span><span id="p_tps">0,00 $</span></div>
+          <div class="row tax-row"><span>TVQ (<span id="p_tvq_rate">9.975</span>%)</span><span id="p_tvq">0,00 $</span></div>
+          <div class="row no-tax-note" id="p_no_tax_note" style="display:none; font-size:11px; color:#78350f; background:#fef3c7; padding:6px 10px; border-radius:4px; margin-top:4px;">
+            Paiement comptant — Taxes non applicables
+          </div>
+          <div class="row total"><span>TOTAL</span><span id="p_total">0,00 $</span></div>
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div class="doc-section">
+        <h3>Conditions et notes</h3>
+        <div class="notes-block" id="p_notes">—</div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="doc-footer">
+        <div class="company-info">
+          <strong>PAVEXPERT INC.</strong><br/>
+          450-419-9939 · info@pavexpert.ca · pavexpert.ca
+        </div>
+        <div style="text-align:right;">
+          <strong>Merci de votre confiance</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- STATE ----------
+  let services = [];
+
+  // ---------- INIT ----------
+  function init() {
+    const today = new Date();
+    const valid = new Date(today.getTime() + 30 * 86400000);
+    document.getElementById('quoteDate').value = today.toISOString().split('T')[0];
+    document.getElementById('quoteValid').value = valid.toISOString().split('T')[0];
+    addService();
+    render();
+    preloadLogo();
+  }
+
+  // ---------- LOGO PRELOAD (convert to data URL for clean PDF capture) ----------
+  async function preloadLogo() {
+    const urls = [
+      'https://images.weserv.nl/?url=pavexpert.ca/wp-content/uploads/2025/06/pave_expert_logo-1-scaled.jpeg&w=800',
+      'https://pavexpert.ca/wp-content/uploads/2025/06/pave_expert_logo-1-scaled.jpeg',
+    ];
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url, { mode: 'cors' });
+        if (!resp.ok) continue;
+        const blob = await resp.blob();
+        const dataUrl = await new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        });
+        document.getElementById('doc-logo-img').src = dataUrl;
+        document.getElementById('logo-mini-img').src = dataUrl;
+        return;
+      } catch (e) { /* try next */ }
+    }
+  }
+
+  // ---------- SERVICES ----------
+  function addService() {
+    services.push({
+      id: Date.now() + Math.random(),
+      type: '',
+      desc: '',
+      sqft: 0,
+      price: 0,
+    });
+    renderServicesForm();
+    render();
+  }
+
+  function removeService(id) {
+    services = services.filter(s => s.id !== id);
+    renderServicesForm();
+    render();
+  }
+
+  function updateService(id, field, value) {
+    const s = services.find(x => x.id === id);
+    if (!s) return;
+    if (field === 'sqft' || field === 'price') {
+      s[field] = parseFloat(value) || 0;
+    } else {
+      s[field] = value;
+    }
+    render();
+  }
+
+  function renderServicesForm() {
+    const list = document.getElementById('services-list');
+    list.innerHTML = services.map((s, i) => `
+      <div class="service-item">
+        <div class="top-row">
+          <span>Service #${i + 1}</span>
+          ${services.length > 1 ? `<button class="remove-btn" onclick="removeService(${s.id})">× Retirer</button>` : ''}
+        </div>
+        <div class="field" style="margin:0 0 8px;">
+          <label>Type de service</label>
+          <input type="text" placeholder="ex. Pavage neuf en asphalte" value="${escapeAttr(s.type)}" oninput="updateService(${s.id}, 'type', this.value)"/>
+        </div>
+        <div class="field" style="margin:0 0 8px;">
+          <label>Description (optionnelle)</label>
+          <textarea rows="2" placeholder="Précisions sur le service" oninput="updateService(${s.id}, 'desc', this.value)" style="width:100%; padding:9px 11px; border:1px solid var(--pav-border); border-radius:6px; font-family:inherit; font-size:13px;">${escapeHtml(s.desc)}</textarea>
+        </div>
+        <div class="row3">
+          <div class="field" style="margin:0;">
+            <label>Pieds carrés (pi²)</label>
+            <input type="number" value="${s.sqft}" min="0" step="0.01" oninput="updateService(${s.id}, 'sqft', this.value)"/>
+          </div>
+          <div class="field" style="margin:0; grid-column: span 2;">
+            <label>Prix total ($)</label>
+            <input type="number" value="${s.price}" min="0" step="0.01" oninput="updateService(${s.id}, 'price', this.value)"/>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  // ---------- RENDER PREVIEW ----------
+  function fmt(n) {
+    return n.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $';
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const [y, m, day] = d.split('-');
+    const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    return `${parseInt(day)} ${months[parseInt(m) - 1]} ${y}`;
+  }
+
+  function render() {
+    const $ = id => document.getElementById(id);
+
+    $('p_quoteNumber').textContent = $('quoteNumber').value || '—';
+    $('p_quoteDate').textContent = fmtDate($('quoteDate').value);
+    $('p_quoteValid').textContent = fmtDate($('quoteValid').value);
+
+    const cName = $('clientName').value || '—';
+    $('p_clientName').textContent = cName;
+    const cDetails = [
+      $('clientAddress').value,
+      $('clientPhone').value,
+      $('clientEmail').value,
+    ].filter(Boolean).join('\n');
+    $('p_clientDetails').textContent = cDetails || '—';
+
+    const seller = $('seller').value || '—';
+    $('p_seller').textContent = seller;
+
+    // Items
+    let subtotal = 0;
+    const rows = services.map(s => {
+      subtotal += s.price;
+      const title = s.type ? escapeHtml(s.type) : 'Service';
+      const sqftDisplay = s.sqft ? s.sqft.toLocaleString('fr-CA') + ' pi²' : '—';
+      return `<tr>
+        <td>
+          <div class="item-title">${title}</div>
+          ${s.desc ? `<div class="item-desc">${escapeHtml(s.desc).replace(/\n/g, '<br/>')}</div>` : ''}
+        </td>
+        <td class="qty">${sqftDisplay}</td>
+        <td class="num">${fmt(s.price)}</td>
+      </tr>`;
+    }).join('');
+    $('p_items').innerHTML = rows || '<tr><td colspan="3" style="text-align:center; color:#999; padding:20px;">Aucun service ajouté</td></tr>';
+
+    // Taxes toggle
+    const includeTaxes = $('includeTaxes').checked;
+    $('taxes-fields').style.display = includeTaxes ? '' : 'none';
+
+    const tpsRate = parseFloat($('tps').value) || 0;
+    const tvqRate = parseFloat($('tvq').value) || 0;
+    const tpsAmt = includeTaxes ? subtotal * tpsRate / 100 : 0;
+    const tvqAmt = includeTaxes ? subtotal * tvqRate / 100 : 0;
+    const total = subtotal + tpsAmt + tvqAmt;
+
+    $('p_subtotal').textContent = fmt(subtotal);
+    $('p_tps').textContent = fmt(tpsAmt);
+    $('p_tvq').textContent = fmt(tvqAmt);
+    $('p_total').textContent = fmt(total);
+    $('p_tps_rate').textContent = tpsRate;
+    $('p_tvq_rate').textContent = tvqRate;
+
+    // Show/hide tax rows in preview based on toggle
+    document.querySelectorAll('.tax-row').forEach(el => {
+      el.style.display = includeTaxes ? '' : 'none';
+    });
+    $('p_no_tax_note').style.display = includeTaxes ? 'none' : 'block';
+
+    $('p_notes').textContent = $('notes').value || '—';
+  }
+
+  function resetForm() {
+    if (!confirm('Réinitialiser tous les champs ?')) return;
+    document.getElementById('clientName').value = '';
+    document.getElementById('clientAddress').value = '';
+    document.getElementById('clientPhone').value = '';
+    document.getElementById('clientEmail').value = '';
+    document.getElementById('seller').value = '';
+    document.getElementById('quoteNumber').value = 'SOUM-2026-001';
+    services = [];
+    addService();
+    init();
+  }
+
+  // ---------- PDF EXPORT ----------
+  async function downloadPDF() {
+    const btn = event.target;
+    const original = btn.textContent;
+    btn.textContent = 'Génération en cours...';
+    btn.disabled = true;
+    try {
+      const doc = document.getElementById('doc');
+      const canvas = await html2canvas(doc, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      if (imgH <= pageH) {
+        pdf.addImage(imgData, 'PNG', 0, 0, imgW, imgH);
+      } else {
+        let heightLeft = imgH;
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+        heightLeft -= pageH;
+        while (heightLeft > 0) {
+          position = heightLeft - imgH;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+          heightLeft -= pageH;
+        }
+      }
+
+      const num = document.getElementById('quoteNumber').value || 'soumission';
+      const client = document.getElementById('clientName').value || 'client';
+      const safeName = `Pavexpert_${num}_${client}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      pdf.save(`${safeName}.pdf`);
+    } catch (err) {
+      alert('Erreur lors de la génération du PDF : ' + err.message);
+    } finally {
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  }
+
+  init();
+</script>
+
+</body>
+</html>
